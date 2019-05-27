@@ -82,8 +82,7 @@ public class DatadogHttpRequests {
    * @throws IOException if HttpURLConnection fails to open connection
    */
   public static Boolean post(final JSONObject payload, final String type, final Secret apiKey, final String targetMetricURL ) throws IOException {
-   // String apiKey = "65f2234040cf20164379d01ee32b6b21";
-   // String targetMetricURL= "https://api.datadoghq.com/api/";
+
 	  String urlParameters = "?api_key=" + Secret.toString(apiKey);
 	 System.out.println("Payload is------"+payload.toString());
     HttpURLConnection conn = null;
