@@ -3,6 +3,7 @@ package hudson.plugins.cobertura;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.FilePath;
+import static hudson.Util.fixEmptyAndTrim;
 import hudson.Launcher;
 import hudson.Util;
 import hudson.model.AbstractProject;
@@ -10,6 +11,9 @@ import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.plugins.cobertura.adapter.CoberturaReportAdapter;
+import hudson.plugins.cobertura.datadog.CoverageReportEventImpl;
+import hudson.plugins.cobertura.datadog.DatadogHttpRequests;
+import hudson.plugins.cobertura.datadog.DatadogPayload;
 import hudson.plugins.cobertura.renderers.SourceCodePainter;
 import hudson.plugins.cobertura.renderers.SourceEncoding;
 import hudson.plugins.cobertura.targets.CoverageMetric;
@@ -20,6 +24,7 @@ import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.BuildStepMonitor;
 import hudson.tasks.Publisher;
 import hudson.tasks.Recorder;
+import hudson.util.Secret;
 import jenkins.MasterToSlaveFileCallable;
 import jenkins.tasks.SimpleBuildStep;
 
@@ -62,6 +67,14 @@ import org.jenkinsci.Symbol;
 public class CoberturaPublisher extends Recorder implements SimpleBuildStep {
 
     private String coberturaReportFile;
+    
+    private Secret apiKey;
+    
+    private String targetMetricURL;
+    
+    private String systemName;
+    
+    private String moduleName;
 
     private boolean onlyStable;
 
@@ -104,10 +117,14 @@ public class CoberturaPublisher extends Recorder implements SimpleBuildStep {
     private boolean enableNewApi;
 
     @Deprecated
-    public CoberturaPublisher(String coberturaReportFile, boolean onlyStable, boolean failUnhealthy, boolean failUnstable,
+    public CoberturaPublisher(String coberturaReportFile, Secret apiKey, String targetMetricURL, String systemName, String moduleName, boolean onlyStable, boolean failUnhealthy, boolean failUnstable,
              boolean autoUpdateHealth, boolean autoUpdateStability, boolean zoomCoverageChart, boolean failNoReports, SourceEncoding sourceEncoding,
              int maxNumberOfBuilds) {
          this.coberturaReportFile = coberturaReportFile;
+         this.apiKey=apiKey;
+         this.targetMetricURL=targetMetricURL;
+         this.systemName = systemName;
+         this.moduleName = moduleName;
          this.onlyStable = onlyStable;
          this.failUnhealthy = failUnhealthy;
          this.failUnstable = failUnstable;
@@ -124,7 +141,7 @@ public class CoberturaPublisher extends Recorder implements SimpleBuildStep {
 
     @DataBoundConstructor
     public CoberturaPublisher() {
-        this("", true, true, true, true, true, true, true, SourceEncoding.UTF_8, 42);
+        this("", null, "", "", "", true, true, true, true, true, true, true, SourceEncoding.UTF_8, 42);
     }
 
     /**
@@ -249,6 +266,80 @@ public class CoberturaPublisher extends Recorder implements SimpleBuildStep {
         return coberturaReportFile;
     }
 
+    /**
+     * @param apiKey setting apiKey 
+     */
+    @DataBoundSetter
+    public void setApiKey(final Secret apiKey) {
+
+    	 this.apiKey = apiKey;
+    }
+
+    /**
+     * Getter for property 'apiKey'.
+     *
+     * @return Value for property 'apiKey'.
+     */
+    public Secret getApiKey() {
+        return apiKey;
+    }
+    
+    
+    /**
+     * @param targetMetricURL for datadog
+     */
+    @DataBoundSetter
+    public void setTargetMetricURL(String targetMetricURL) {
+
+        this.targetMetricURL = targetMetricURL;
+    }
+
+    /**
+     * Getter for property 'targetMetricURL'.
+     *
+     * @return Value for property 'targetMetricURL'.
+     */
+    public String getTargetMetricURL() {
+        return targetMetricURL;
+    }
+    
+    /**
+     * @param systemName for datadog
+     */
+    @DataBoundSetter
+    public void setSystemName(String systemName) {
+
+        this.systemName = systemName;
+    }
+
+    /**
+     * Getter for property 'systemName'.
+     *
+     * @return Value for property 'systemName'.
+     */
+    public String getSystemName() {
+        return systemName;
+    }
+
+    /**
+     * Getter for property 'moduleName'.
+     *
+     * @return Value for property 'moduleName'.
+     */
+    public String getModuleName() {
+        return moduleName;
+    }
+    
+    /**
+     * @param moduleName for module Name
+     */
+    @DataBoundSetter
+    public void setModuleName(String moduleName) {
+
+        this.moduleName = moduleName;
+    }
+
+    
     @DataBoundSetter
     public void setOnlyStable(boolean onlyStable) {
         this.onlyStable = onlyStable;
@@ -629,6 +720,17 @@ public class CoberturaPublisher extends Recorder implements SimpleBuildStep {
                 newApiAdapter.performCoveragePlugin(build, workspace, launcher, listener);
             }
 
+            if (result != null ) {
+            	DatadogPayload datadogPayload = new DatadogPayload(result);
+            	datadogPayload.setModule(moduleName);
+            	datadogPayload.setSystem(systemName);
+            	
+          
+                CoverageReportEventImpl evt = new CoverageReportEventImpl(datadogPayload);
+                DatadogHttpRequests.sendEvent(evt, apiKey, targetMetricURL);
+                logMessage(listener, "Metric event  sent to Datadog:");
+           
+            }
             Set<CoverageMetric> failingMetrics = failingTarget.getFailingMetrics(result);
             if (!failingMetrics.isEmpty()) {
                 logMessage(listener, "Code coverage enforcement failed for the following metrics:");
