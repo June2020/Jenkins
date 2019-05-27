@@ -8,10 +8,10 @@
     <relativePath />
   </parent>
 
-  <artifactId>cobertura</artifactId>
+  <artifactId>coverage-datadog</artifactId>
   <packaging>hpi</packaging>
-  <version>1.14-SNAPSHOT</version>
-  <name>Jenkins Cobertura Plugin</name>
+  <version>2.0-SNAPSHOT</version>
+  <name>Jenkins Cobertura Datadog Plugin</name>
   <url>https://wiki.jenkins.io/display/JENKINS/Cobertura+Plugin</url>
 
   <properties>
