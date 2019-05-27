@@ -5,7 +5,23 @@
              description="${%xml.report.pattern.description}">
         <f:textbox name="cobertura.coberturaReportFile" value="${instance.coberturaReportFile}"/>
     </f:entry>
-
+    <f:entry title="Datadog API Key*"
+             description="API Key to connect to datadog" >
+            <f:password name="cobertura.apiKey" value="${instance.apiKey}" />
+    </f:entry>
+    
+    <f:entry title="Target datadog URL*"
+             description="Target datadog end point" >
+            <f:textbox name="cobertura.targetMetricURL" value="${instance.targetMetricURL}" />
+    </f:entry>
+      <f:entry title="System Name"
+             description="Specify the system to which this module belongs" >
+            <f:textbox name="cobertura.systemName" value="${instance.systemName}" />
+    </f:entry>
+      <f:entry title="Module Name*"
+             description="Specify the module/project name" >
+            <f:textbox name="cobertura.moduleName" value="${instance.moduleName}" />
+    </f:entry>
     <f:entry title="Enable New API">
         <f:checkbox name="cobertura.enableNewApi" checked="${instance.enableNewApi}"/>
     </f:entry>
